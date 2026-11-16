@@ -27,18 +27,18 @@ function touch(path){PENDING[path]='set';saveLocal();schedule()}
 function drop(coll,id){delete S[coll][id];PENDING[coll+'/'+id]='del';saveLocal();schedule()}
 function schedule(){clearTimeout(flushT);flushT=setTimeout(flush,700);setSync()}
 async function flush(){
- if(!DB.db||flushing)return;flushing=true;
+ if(!DB.db){if(DB.sb)return sbSync();return}if(flushing)return;flushing=true;
  try{for(const path of Object.keys(PENDING)){
    const op=PENDING[path];const ref=DB.db.doc(path);
    try{if(op==='del')await ref.delete();else{const d=docAt(path);if(d)await ref.set(JSON.parse(JSON.stringify(d)))}
     if(PENDING[path]===op)delete PENDING[path]}
    catch(e){if(e&&e.code==='quota_exceeded'){toast('Banco cheio: apague registros antigos');break}if(e&&(e.code==='invalid_argument')){delete PENDING[path];continue}break}}
  }finally{flushing=false;saveLocal();setSync()}}
-function setSync(){const n=Object.keys(PENDING).length;DB.status=!DB.db?'local':n?'wait':'ok';const e=document.getElementById('syncdot');if(e){e.className='sync '+DB.status;e.lastChild.textContent=syncLabel()}}
-function syncLabel(){return DB.status==='local'?'Salvo neste aparelho':DB.status==='wait'?'Sincronizando…':'Sincronizado'}
+function setSync(){const n=Object.keys(PENDING).length;if(DB.db)DB.status=n?'wait':'ok';else if(!DB.sb)DB.status='local';else if(DB.status!=='err')DB.status=!navigator.onLine?'off':n?'wait':'ok';const e=document.getElementById('syncdot');if(e){e.className='sync '+DB.status;e.lastChild.textContent=syncLabel()}}
+function syncLabel(){return DB.status==='local'?'Salvo neste aparelho':DB.status==='off'?'Offline, salvo no aparelho':DB.status==='err'?(navigator.onLine?'Erro ao sincronizar':'Offline, salvo no aparelho'):DB.status==='wait'?'Sincronizando…':'Sincronizado'}
 const withTimeout=(p,ms=10000)=>Promise.race([p,new Promise((_,r)=>setTimeout(()=>r({code:'timeout'}),ms))]);
 async function connectCloud(){
- if(!window.claude||!window.claude.use)return;
+ if(!window.claude||!window.claude.use){if(SB.on){DB.sb=true;setSync();await sbSync()}return}
  try{
   const [db,assets,sample,downloads]=await Promise.all(['db','assets','sample','downloads'].map(n=>window.claude.use(n).catch(()=>null)));
   DB.assets=assets;DB.sample=sample;DB.downloads=downloads;
@@ -54,5 +54,5 @@ async function connectCloud(){
  setSync();if(typeof render==='function')render();flush()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)flush()});
 window.addEventListener('online',flush);
-async function uploadAsset(blob){if(!DB.assets)throw{code:'no_assets',message:'Envio de arquivos disponível só abrindo pelo Claude.'};return await DB.assets.upload(blob)}
-const assetUrl=id=>'/_blob/'+id;
+async function uploadAsset(blob){if(!DB.assets&&DB.sb&&SB.on){const ext=(blob.type||'').includes('video')?(blob.type.includes('quicktime')?'mov':'mp4'):(blob.type||'').includes('pdf')?'pdf':'jpg';return{id:'sb:'+await SB.upload(blob,ext)}}if(!DB.assets)throw{code:'no_assets',message:'Envio de arquivos disponível só abrindo pelo Claude.'};return await DB.assets.upload(blob)}
+

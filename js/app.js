@@ -74,7 +74,7 @@ function go(t){TAB=t;STACK=[];render();scrollTo(0,0)}
 function push(v,...a){STACK.push([v,a]);render();scrollTo(0,0)}
 function pop(){STACK.pop();render()}
 let after=[];
-function render(){renderTabs();const[v,a]=STACK.length?STACK[STACK.length-1]:[TAB,[]];$('#view').innerHTML=V[v](...a);const h=after;after=[];h.forEach(f=>f())}
+function render(){renderTabs();const[v,a]=STACK.length?STACK[STACK.length-1]:[TAB,[]];$('#view').innerHTML=V[v](...a);const h=after;after=[];h.forEach(f=>f());if(typeof hydrateAssets==='function')hydrateAssets()}
 const hdr=(t,right='')=>`<div class="top"><button class="ib" onclick="pop()" aria-label="Voltar">${I.back}</button><h2>${t}</h2>${right}</div>`;
 function openSheet(h){$('#sheetc').innerHTML=h;$('#ov').classList.add('show');$('#sheet').classList.add('show')}
 function closeSheet(){$('#ov').classList.remove('show');$('#sheet').classList.remove('show')}
@@ -95,6 +95,7 @@ V.hoje=()=>{
  const aiTxt=D.ai;
  return`<div class="between" style="margin:8px 0 18px"><div class="brand">${plateMark()} HardFit</div><span id="syncdot" class="sync ${DB.status}"><i></i>${syncLabel()}</span></div>
  <h1>${greet}, ${esc(S.cfg.name)}</h1><div class="lead">${DOW[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]}</div>
+ ${!IS_CLAUDE()&&!SB.on?`<button class="panel" style="margin:16px 0 0;width:100%;text-align:left;border-color:var(--blue)" onclick="push('conta')"><div class="between"><h3>Ative a sincronização</h3><span class="chev"></span></div><p class="small mut" style="margin:6px 0 0">Crie seu acesso uma vez para salvar na nuvem e liberar a IA.</p></button>`:''}
  <div class="panel" style="margin-top:18px;padding:18px">
   <div class="flex" style="gap:16px;align-items:center">
    <div class="plate" style="width:132px;height:132px">${plateSVG(r?r.score:null,r?r.c:'#30353b')}<div class="c"><b style="font-size:38px">${r?r.score:'–'}</b><span>prontidão</span></div></div>
@@ -111,7 +112,7 @@ V.hoje=()=>{
  <div class="sec"><h3>Sua semana</h3><span class="small mut">${streak()} dia(s) seguidos</span></div>
  <div class="panel"><div class="week">${ws.w.map((x,i)=>`<div><div class="d">${'STQQSSD'[i]}</div><div class="p ${act.has(x)?'on':''} ${x===k?'today':''}">${parseDk(x).getDate()}</div></div>`).join('')}</div>
   <div class="strip" style="margin-top:14px;border:0;background:none"><div><b>${ws.tre}</b><span>treinos</span></div><div><b>${Math.floor(ws.cmin/60)}h${pad(Math.round(ws.cmin%60))}</b><span>cardio</span></div><div><b>${ws.diet}</b><span>dias dieta</span></div><div><b>${ws.ativos}/7</b><span>ativos</span></div></div></div>
-${!IS_CLAUDE()&&unsent()?`<button class="panel" style="width:100%;text-align:left;border-color:var(--blue)" onclick="push('sync')"><div class="between"><h3>${unsent()} registro(s) para mandar ao Claude</h3><span class="chev"></span></div><p class="small mut" style="margin:6px 0 0">Quando tiver internet, copie e cole na versão com IA.</p></button>`:''}${IS_CLAUDE()?`<div class="rows"><button class="row" onclick="push('sync')"><div class="grow"><div class="t">Treinou com o app offline?</div><div class="d">Cole os registros aqui para a IA enxergar</div></div><span class="chev"></span></button></div>`:''}
+${IS_CLAUDE()?`<div class="rows"><button class="row" onclick="push('sync')"><div class="grow"><div class="t">Treinou com o app offline?</div><div class="d">Cole os registros aqui para a IA enxergar</div></div><span class="chev"></span></button></div>`:''}
  <div class="panel" onclick="push('metodo')"><div class="between"><h3>Carga de treino</h3><span class="tag"><i style="background:${L.ratio==null?'var(--steel2)':L.ratio<0.8?'var(--blue)':L.ratio<=1.3?'var(--grn)':L.ratio<=1.5?'var(--yel)':'var(--red)'}"></i>${L.zona}</span></div>
   <p class="small mut" style="margin:8px 0 0">Últimos 7 dias: <b class="n" style="color:var(--chalk)">${L.aguda}</b> UA · média semanal do mês: <b class="n" style="color:var(--chalk)">${L.cronica}</b> UA${L.ratio!=null?` · razão <b class="n" style="color:var(--chalk)">${fmtKg(L.ratio)}</b>`:''}</p></div>`};
 function flexToday(k){const nx=nextSession();const w=weekDays();const forca=Object.values(S.logs).filter(l=>w.includes(l.date)).map(l=>l.sess);const done=doneOn(k);
@@ -338,7 +339,7 @@ function gdEnd(cancel){clearInterval(gdIv);const g=GD;GD=null;$('#flow').classLi
 V.coach=()=>{
  const rep=Object.values(S.reports).sort(by('t')).pop();const ex=Object.values(S.exams).sort(by('t')).pop();
  return`<h1 style="margin-top:8px">Coach</h1><p class="lead">Leitura dos seus dados, exames e fotos por IA, com o mesmo método do treino.</p>
- ${aiOn()?'':`<div class="panel" style="margin-top:16px"><h3>IA indisponível nesta versão</h3><p class="small mut" style="margin:6px 0 0">A leitura de exames, fotos, vídeos e os relatórios funcionam quando você abre o app pelo Claude. Treino, cardio e dieta funcionam em qualquer versão.</p></div>`}
+ ${aiOn()?'':`<div class="panel" style="margin-top:16px"><h3>${SB.on?'Sem internet agora':'Ative a sincronização para usar a IA'}</h3><p class="small mut" style="margin:6px 0 0">${SB.on?'A IA volta assim que o celular pegar sinal. Os registros continuam sendo salvos.':'Em Você, Conta e sincronização, crie seu acesso. Treino, cardio e dieta funcionam sem isso.'}</p>${SB.on?'':`<button class="btn sm blue" style="margin-top:12px" onclick="push('conta')">Criar acesso</button>`}</div>`}
  <div class="rows" style="margin-top:16px">
   <button class="row" onclick="push('report')"><span class="sw" style="background:var(--chalk)"></span><div class="grow"><div class="t">Relatório da semana</div><div class="d">${rep?'Último em '+fmtD(dk(new Date(rep.t))):'Como você se sentiu, dores, cargas, cardio e dieta'}</div></div><span class="chev"></span></button>
   <button class="row" onclick="push('chat')"><span class="sw" style="background:var(--blue)"></span><div class="grow"><div class="t">Conversar com o coach</div><div class="d">Pergunte sobre treino, dor, dieta ou ajuste da semana</div></div><span class="chev"></span></button>
@@ -389,7 +390,7 @@ V.exame=id=>{const x=S.exams[id];if(!x)return hdr('Exame');const r=x.r;
  <div class="panel" style="padding:6px 14px"><table class="lab">${(r.itens||[]).map(i=>`<tr><td><span class="sw" style="background:${STC(i.status)};margin-right:8px"></span><b>${esc(i.nome)}</b><div class="tiny mut" style="margin:3px 0 0 18px">${esc(i.explicacao||'')}${i.referencia?' Referência: '+esc(i.referencia)+'.':''}</div></td><td class="v">${esc(i.valor)} <span class="tiny mut">${esc(i.unidade||'')}</span><div class="tiny" style="color:${STC(i.status)};font-weight:600">${esc(i.status||'')}</div></td></tr>`).join('')}</table></div>
  ${r.treino_e_dieta?`<div class="sec"><h3>Treino e dieta</h3></div><div class="panel"><p style="margin:0">${esc(r.treino_e_dieta)}</p></div>`:''}
  ${(r.perguntar_ao_medico||[]).length?`<div class="sec"><h3>Perguntas para o médico</h3></div><div class="panel"><ul style="margin:0;padding-left:18px">${r.perguntar_ao_medico.map(a=>`<li>${esc(a)}</li>`).join('')}</ul></div>`:''}
- ${(x.pages||[]).length?`<div class="sec"><h3>Arquivo</h3></div><div class="thumbs">${x.pages.map(p=>`<a href="${assetUrl(p)}" target="_blank" rel="noopener"><img src="${assetUrl(p)}" alt="Página do exame"></a>`).join('')}</div>`:''}
+ ${(x.pages||[]).length?`<div class="sec"><h3>Arquivo</h3></div><div class="thumbs">${x.pages.map(p=>`<a ${assetAttr(p,'href')} target="_blank" rel="noopener"><img ${assetAttr(p)} alt="Página do exame"></a>`).join('')}</div>`:''}
  <button class="txtbtn" style="margin-top:16px;color:var(--red)" onclick="ask('Apagar este exame?',()=>{drop('exams','${id}');pop()},'Apagar')">Apagar exame</button>`};
 
 /* ---- fotos de progresso ---- */
@@ -398,15 +399,15 @@ V.fotos=()=>{const P=Object.values(S.photos).sort(by('t')).reverse();
  return`${hdr('Fotos de progresso')}<div class="seg">${['Frente','Lado','Costas'].map(p=>`<button class="${POSE===p?'on':''}" onclick="POSE='${p}';render()">${p}</button>`).join('')}</div>
  <label class="drop" style="margin-top:12px;${DB.assets?'':'opacity:.5;pointer-events:none'}">${I.cam}<b>Nova foto: ${POSE.toLowerCase()}</b>Mesmo lugar, mesma luz, de manhã e em jejum. A IA compara com a última foto desta pose.<input type="file" accept="image/*" style="display:none" onchange="handlePhoto(this.files[0])"></label>
  <div id="phout"></div>
- ${P.length?`<div class="sec"><h3>Linha do tempo</h3></div><div class="thumbs">${P.map(p=>`<button onclick="push('foto','${p.id}')" style="text-align:left"><img src="${assetUrl(p.asset)}" alt="Foto ${esc(p.pose)} ${fmtD(p.date)}" loading="lazy"><div class="tiny mut" style="margin-top:4px">${fmtD(p.date)}, ${esc(p.pose.toLowerCase())}</div></button>`).join('')}</div>`:''}`};
+ ${P.length?`<div class="sec"><h3>Linha do tempo</h3></div><div class="thumbs">${P.map(p=>`<button onclick="push('foto','${p.id}')" style="text-align:left"><img ${assetAttr(p.asset)} alt="Foto ${esc(p.pose)} ${fmtD(p.date)}" loading="lazy"><div class="tiny mut" style="margin-top:4px">${fmtD(p.date)}, ${esc(p.pose.toLowerCase())}</div></button>`).join('')}</div>`:''}`};
 async function handlePhoto(f){if(!f)return;const o=$('#phout');o.innerHTML='<div class="panel small"><span class="spin"></span> Enviando foto…</div>';
  try{const blob=await shrink(await fileToImg(f),1600);const a=await uploadAsset(blob);const prev=Object.values(S.photos).filter(p=>p.pose===POSE).sort(by('t')).pop();
   const id=uid('P');const rec={id,t:Date.now(),date:dk(),pose:POSE,asset:a.id,ai:''};S.photos[id]=rec;touch('photos/'+id);
-  if(aiOn()){o.innerHTML='<div class="panel md ai" id="phai"><span class="spin"></span> Avaliando…</div>';let pb=null;if(prev){try{pb=await (await fetch(assetUrl(prev.asset))).blob()}catch(e){}}
+  if(aiOn()){o.innerHTML='<div class="panel md ai" id="phai"><span class="spin"></span> Avaliando…</div>';let pb=null;if(prev){try{pb=await assetBlob(prev.asset)}catch(e){}}
    rec.ai=await aiPhoto(blob,POSE,pb,streamInto('#phai'));rec.vs=prev?prev.id:null;touch('photos/'+id)}
   push('foto',id)}catch(e){o.innerHTML=`<div class="panel small">${e&&e.code?aiErr(e):esc(e&&e.message||'Falha ao enviar a foto.')}</div>`}}
 V.foto=id=>{const p=S.photos[id];if(!p)return hdr('Foto');const v=p.vs&&S.photos[p.vs];
- return`${hdr(p.pose+', '+fmtD(p.date))}<div class="${v?'g2':''}">${v?`<div><img class="media" src="${assetUrl(v.asset)}" alt="Foto anterior"><div class="tiny mut" style="margin-top:4px">${fmtD(v.date)}</div></div>`:''}<div><img class="media" src="${assetUrl(p.asset)}" alt="Foto de ${fmtD(p.date)}">${v?`<div class="tiny mut" style="margin-top:4px">${fmtD(p.date)}</div>`:''}</div></div>
+ return`${hdr(p.pose+', '+fmtD(p.date))}<div class="${v?'g2':''}">${v?`<div><img class="media" ${assetAttr(v.asset)} alt="Foto anterior"><div class="tiny mut" style="margin-top:4px">${fmtD(v.date)}</div></div>`:''}<div><img class="media" ${assetAttr(p.asset)} alt="Foto de ${fmtD(p.date)}">${v?`<div class="tiny mut" style="margin-top:4px">${fmtD(p.date)}</div>`:''}</div></div>
  ${p.ai?`<div class="panel md ai" style="margin-top:12px">${md(p.ai)}</div>`:''}<button class="txtbtn" style="margin-top:14px;color:var(--red)" onclick="ask('Apagar esta foto?',()=>{drop('photos','${id}');pop()},'Apagar')">Apagar foto</button>`};
 
 /* ---- técnica por vídeo ---- */
@@ -415,7 +416,7 @@ V.tecnica=(ex)=>{if(ex)TEX=ex;const T=Object.values(S.tech).filter(t=>!ex||t.ex=
  return`${hdr('Técnica por vídeo')}<select onchange="TEX=this.value">${Object.entries(EX).map(([k,e])=>`<option value="${k}" ${k===TEX?'selected':''}>${e.n}</option>`).join('')}</select>
  <label class="drop" style="margin-top:12px;${aiOn()?'':'opacity:.5;pointer-events:none'}">${I.cam}<b>Enviar vídeo da série</b>Celular apoiado, corpo inteiro no quadro, de lado para agachamento e terra, de frente para supino e desenvolvimento. Até 30 s.<input type="file" accept="video/*" style="display:none" onchange="handleTech(this.files[0])"></label>
  <div id="tout"></div>
- ${T.length?`<div class="sec"><h3>Análises</h3></div>${T.map(t=>`<div class="panel"><div class="between"><h3>${EX[t.ex].n}</h3><span class="small mut">${fmtD(t.date)}</span></div>${t.video?`<video class="media" style="margin-top:10px;max-height:360px" src="${assetUrl(t.video)}" controls playsinline preload="metadata"></video>`:''}<div class="md ai" style="margin-top:10px">${md(t.ai)}</div><button class="tiny mut" style="margin-top:8px" onclick="ask('Apagar esta análise?',()=>{drop('tech','${t.id}');render()},'Apagar')">apagar</button></div>`).join('')}`:''}`};
+ ${T.length?`<div class="sec"><h3>Análises</h3></div>${T.map(t=>`<div class="panel"><div class="between"><h3>${EX[t.ex].n}</h3><span class="small mut">${fmtD(t.date)}</span></div>${t.video?`<video class="media" style="margin-top:10px;max-height:360px" ${assetAttr(t.video)} controls playsinline preload="metadata"></video>`:''}<div class="md ai" style="margin-top:10px">${md(t.ai)}</div><button class="tiny mut" style="margin-top:8px" onclick="ask('Apagar esta análise?',()=>{drop('tech','${t.id}');render()},'Apagar')">apagar</button></div>`).join('')}`:''}`};
 async function handleTech(f){if(!f)return;const o=$('#tout');o.innerHTML='<div class="panel small"><span class="spin"></span> Separando quadros do vídeo…</div>';
  try{const fr=await videoFrames(f,6);let vid=null;if(f.size<=20*1024*1024){o.innerHTML='<div class="panel small"><span class="spin"></span> Guardando vídeo…</div>';try{vid=(await uploadAsset(f)).id}catch(e){}}
   o.innerHTML='<div class="panel md ai" id="tai"><span class="spin"></span> Analisando técnica…</div>';
@@ -459,7 +460,7 @@ V.mais=()=>`<h1 style="margin-top:8px">${esc(S.cfg.name)}</h1><p class="lead"><s
  <div class="sec"><h3>Plano</h3></div>
  <div class="rows"><button class="row" onclick="push('semana')"><div class="grow"><div class="t">Minha semana</div><div class="d">${S.cfg.flex?'Livre, sem dia fixo':'Dias fixos'}</div></div><span class="chev"></span></button><button class="row" onclick="push('metodo')"><div class="grow"><div class="t">Como o app decide</div></div><span class="chev"></span></button></div>
  <div class="sec"><h3>Integrações e dados</h3></div>
- <div class="rows"><button class="row" onclick="push('saude')"><div class="grow"><div class="t">Apple Saúde e Watch</div><div class="d">Importar passos, kcal, FC de repouso e distâncias</div></div><span class="chev"></span></button><button class="row" onclick="push('sync')"><div class="grow"><div class="t">Sincronizar</div><div class="d">${IS_CLAUDE()?'Trazer treinos do app offline':'Mandar treinos para a versão com IA'}</div></div><span class="chev"></span></button><button class="row" onclick="push('dados')"><div class="grow"><div class="t">Backup</div><div class="d">Exportar ou restaurar seus registros</div></div><span class="chev"></span></button><button class="row" onclick="editName()"><div class="grow"><div class="t">Nome</div><div class="d">${esc(S.cfg.name)}</div></div><span class="chev"></span></button></div>`;
+ <div class="rows"><button class="row" onclick="push('saude')"><div class="grow"><div class="t">Apple Saúde e Watch</div><div class="d">Importar passos, kcal, FC de repouso e distâncias</div></div><span class="chev"></span></button><button class="row" onclick="push('sync')"><div class="grow"><div class="t">${IS_CLAUDE()?'Sincronizar':'Conta e sincronização'}</div><div class="d">${IS_CLAUDE()?'Trazer treinos do app offline':SB.on?syncLabel():'Ative para salvar na nuvem e usar a IA'}</div></div><span class="chev"></span></button><button class="row" onclick="push('dados')"><div class="grow"><div class="t">Backup</div><div class="d">Exportar ou restaurar seus registros</div></div><span class="chev"></span></button><button class="row" onclick="editName()"><div class="grow"><div class="t">Nome</div><div class="d">${esc(S.cfg.name)}</div></div><span class="chev"></span></button></div>`;
 function editName(){openSheet(`<h2>Seu nome</h2><input id="nm" style="margin-top:14px" value="${esc(S.cfg.name)}"><button class="btn" style="margin-top:12px" onclick="S.cfg.name=$('#nm').value.trim()||S.cfg.name;touch('cfg/main');closeSheet();render()">Salvar</button>`)}
 V.bemestar=()=>{const ks=Object.keys(S.days).filter(k=>S.days[k].ci).sort();const pts=ks.slice(-30).map(k=>({x:k,y:readiness(k).score}));
  return`${hdr('Check-ins',`<button class="btn sm blue" onclick="startCheckin()">Hoje</button>`)}<div class="panel"><h3>Prontidão</h3>${pts.length?lineChart(pts):'<p class="small mut">Sem check-ins ainda.</p>'}</div>
@@ -529,13 +530,31 @@ function tryMerge(t,loud){let o;try{o=JSON.parse(t)}catch(e){}if(!o||o.anilha!==
  const L={};Object.values(S.logs).sort(by('start')).forEach(l=>l.sets.forEach(x=>{L[x.id]=L[x.id]||{};L[x.id][Math.min(x.set,4)]={kg:x.kg,reps:x.reps}}));
  S.cfg.loads=Object.assign({},S.cfg.loads,c.loads||{},L);PENDING['cfg/main']='set';
  saveLocal();schedule();closeSheet();go('hoje');toast(n?n+' registro(s) novos juntados':'Tudo já estava em dia');return true}
-V.sync=()=>`${hdr('Sincronizar')}
+V.sync=()=>IS_CLAUDE()?syncClaude():V.conta();
+const syncClaude=()=>`${hdr('Sincronizar')}
  <p class="small" style="margin-top:-6px">${IS_CLAUDE()?'Esta é a versão do Claude, com IA. Ela precisa de internet.':'Este é o app offline da academia. Funciona sem internet, mas não tem IA.'} As duas versões trocam registros por copiar e colar: leva 10 segundos.</p>
  <div class="panel" style="margin-top:14px"><h3>${IS_CLAUDE()?'Trazer treinos do app offline':'Mandar treinos para o Claude'}</h3><p class="small mut" style="margin:6px 0 12px">${IS_CLAUDE()?'No app offline, toque em Copiar registros. Depois volte aqui e toque em Colar.':'Toque em Copiar e, com internet, cole na versão do Claude para a IA analisar.'}</p>
  ${IS_CLAUDE()?`<button class="btn" onclick="receivePack()">Colar registros do app offline</button><button class="btn ghost" style="margin-top:10px" onclick="sendPack()">Copiar registros para o app offline</button>`:`<button class="btn" onclick="sendPack()">Copiar registros${unsent()?' ('+unsent()+' novos)':''}</button><button class="btn ghost" style="margin-top:10px" onclick="receivePack()">Colar registros da versão do Claude</button>`}</div>
  <p class="tiny mut">Nada é apagado na troca: registros iguais são ignorados e as cargas são recalculadas a partir de todas as sessões.</p>`;
 
+V.conta=()=>{const on=SB.on;return`${hdr('Conta e sincronização')}
+ ${on?`<div class="panel"><div class="between"><div><div class="small mut">Conectado como</div><b>${esc(SB.s.user.email)}</b></div><span id="syncdot" class="sync ${DB.status}"><i></i>${syncLabel()}</span></div>
+ <p class="small mut" style="margin:12px 0 0">Tudo que você registra fica salvo no iPhone, inclusive sem internet. Quando o celular pega sinal, o app envia e recebe sozinho. ${DB.lastSync?'Última sincronização: '+new Date(DB.lastSync).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.':''}${DB.status==='err'&&DB.err?' Último erro: '+esc(DB.err):''}</p>
+ <button class="btn" style="margin-top:14px" onclick="sbSync().then(()=>toast(DB.status==='ok'?'Sincronizado':'Sem conexão agora: tento de novo sozinho'))">Sincronizar agora</button>
+ <button class="btn ghost" style="margin-top:10px" onclick="ask('Sair da conta neste aparelho? Os registros ficam salvos aqui e na nuvem.',()=>{SB.signOut();DB.sb=false;DB.status='local';render()},'Sair')">Sair</button></div>`
+ :`<p class="small" style="margin-top:-6px">Crie seu acesso uma vez. Depois disso o app sincroniza sozinho sempre que tiver internet, guarda fotos, exames e vídeos e libera a IA. Só existe uma conta: a sua.</p>
+ <div class="field" style="margin-top:14px"><label>E-mail</label><input id="ac_e" type="email" autocomplete="username" inputmode="email"></div>
+ <div class="field"><label>Senha (mínimo 6 caracteres)</label><input id="ac_p" type="password" autocomplete="current-password"></div>
+ <div class="g2"><button class="btn ghost" onclick="acGo('up')">Criar acesso</button><button class="btn" onclick="acGo('in')">Entrar</button></div>
+ <p class="tiny mut" style="margin-top:12px">Já criou o acesso em outro aparelho? Use Entrar com o mesmo e-mail e senha.</p>`}`};
+async function acGo(m){const e=$('#ac_e').value.trim(),p=$('#ac_p').value;if(!e||p.length<6){toast('Preencha e-mail e senha de 6+ caracteres');return}
+ try{toast(m==='up'?'Criando acesso…':'Entrando…');if(m==='up')await SB.signUp(e,p);else await SB.signIn(e,p);
+  DB.sb=true;Object.keys(S.cfg).length&&(PENDING['cfg/main']='set');['days','logs','cardio','body','exams','photos','reports','tech'].forEach(c=>Object.keys(S[c]).forEach(id=>PENDING[c+'/'+id]=PENDING[c+'/'+id]||'set'));saveLocal();
+  await sbSync();render();toast('Conta conectada')}
+ catch(x){toast(/único|única|database error/i.test(x.message||'')?'Já existe uma conta. Use Entrar.':/invalid/i.test(x.message||'')?'E-mail ou senha incorretos':(x.message||'Não deu certo'))}}
+
 /* ===== Início ===== */
 loadLocal();render();
 connectCloud().then(initDict);
+window.addEventListener('online',()=>{sbSync();render()});window.addEventListener('offline',()=>render());
 if(!window.claude&&'serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});

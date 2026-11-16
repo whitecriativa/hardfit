@@ -2,14 +2,14 @@
 const COACH=`Você é o coach de força e condicionamento e nutricionista esportivo do Luiz Henrique, atleta amador de CrossFit em Araçatuba-SP que também corre, pedala e nada, e usa iPhone + Apple Watch.
 Método do app: séries tipadas (aquecimento, feeder e 3 work sets de 6 a 10 reps), dupla progressão guiada por PSE (esforço 1–10), prontidão diária pelo check-in (fadiga, sono, dor, estresse, humor e mapa de dor), carga interna sRPE (minutos × PSE) com razão aguda:crônica (7 d vs média de 28 d), cardio aeróbio em zona 2 (FC 115–130 bpm) e a dieta escrita do protocolo, com 5 L de água por dia.
 Regras: escreva em português do Brasil, direto e prático, como um treinador falando com o atleta. Use só os dados do contexto; se faltar dado, diga qual. Não faça diagnóstico médico nem prescreva remédio. Dor forte, dor que piora, dor articular persistente ou exame muito alterado: oriente procurar médico ou fisioterapeuta. Nada de emojis.`;
-const aiOn=()=>!!DB.sample;
-function aiErr(e){const c=e&&e.code;if(c==='not_granted')return'Você não liberou a IA neste app. Para usar, abra pelo Claude e aceite o pedido de acesso.';if(c==='rate_limited')return'Muitas consultas seguidas. Espere um minuto e tente de novo.';return'A IA não respondeu agora ('+(e&&e.message||c||'erro')+'). Tente de novo.'}
+const aiOn=()=>!!DB.sample||(!!DB.sb&&SB.on&&navigator.onLine);
+function aiErr(e){const c=e&&e.code;if(c==='no_key')return'A IA ainda não foi ativada: falta colocar a chave da API do Claude no Supabase.';if(c==='no_credit')return'A conta da API do Claude está sem crédito. Adicione crédito em console.anthropic.com.';if(c==='not_granted')return'Você não liberou a IA neste app. Para usar, abra pelo Claude e aceite o pedido de acesso.';if(c==='rate_limited')return'Muitas consultas seguidas. Espere um minuto e tente de novo.';return'A IA não respondeu agora ('+(e&&e.message||c||'erro')+'). Tente de novo.'}
 async function aiAsk(prompt,o={}){
- if(!DB.sample)throw{code:'unavailable',message:'IA disponível só abrindo pelo Claude'};
+ if(!DB.sample){if(DB.sb&&SB.on){const imgs=o.images?await Promise.all(o.images.map(blobToB64)):[];const r=await SB.ai(COACH+'\n\n'+prompt,imgs,o.tier||'default');const t=(r&&r.text)||'';o.onText&&o.onText({text:t});return t}throw{code:'unavailable',message:'Ative a sincronização para usar a IA'}}
  const opts={modelTier:o.tier||'default',cache:false};if(o.onText)opts.onText=o.onText;if(o.images&&o.images.length)opts.images=o.images;
  const r=await DB.sample(COACH+'\n\n'+prompt,opts);return r.text||''}
 function parseJSON(t){try{return JSON.parse(t)}catch(e){}const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1))}catch(e){}}return null}
-async function canImages(){try{const l=await DB.sample.limits();return!!(l&&l.images)}catch(e){return true}}
+async function canImages(){if(!DB.sample)return true;try{const l=await DB.sample.limits();return!!(l&&l.images)}catch(e){return true}}
 
 /* --- contexto compacto que vai junto em toda pergunta --- */
 function ctx(days=14){
