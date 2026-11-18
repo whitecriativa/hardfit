@@ -25,14 +25,26 @@ async function assetBlob(id){if(String(id).startsWith('sb:'))return SB.blob(id.s
 function assetAttr(id,attr='src'){return String(id).startsWith('sb:')?`data-asset="${esc(id)}" data-attr="${attr}"${ASSET_CACHE[id]?` ${attr}="${ASSET_CACHE[id]}"`:''}`:`${attr}="/_blob/${esc(id)}"`}
 function hydrateAssets(){document.querySelectorAll('[data-asset]').forEach(async el=>{const id=el.dataset.asset,a=el.dataset.attr||'src';if(el.getAttribute(a))return;try{if(!ASSET_CACHE[id])ASSET_CACHE[id]=URL.createObjectURL(await assetBlob(id));el.setAttribute(a,ASSET_CACHE[id])}catch(e){}})}
 /* sincronização */
-let sbBusy=false;
+let sbBusy=false,sbAgain=false;
+/* registros que chegaram pelo WhatsApp: soma no dia sem apagar o que já foi lançado no app */
+function applyInbox(x){(x.acoes||[]).forEach(a=>{const k=/^\d{4}-\d{2}-\d{2}$/.test(a.data||'')?a.data:dk();const d=day(k);d.wt=Date.now();
+ if(a.tipo==='agua'&&+a.ml){d.water=Math.max(0,(d.water||0)+ +a.ml);d.wlog=d.wlog||[];d.wlog.push({t:x.t||Date.now(),ml:+a.ml,src:'wa'})}
+ else if((a.tipo==='refeicao'||a.tipo==='foto_refeicao')&&a.n!=null){d.meals=d.meals||{};d.meals[a.n]=a.feita!==false;if(a.opcao!=null)d.meals['o'+a.n]=+a.opcao}
+ else if(a.tipo==='checkin'){const pain={};(a.dores||[]).forEach(p=>{if(p.regiao&&REG_N[baseOf(p.regiao)])pain[p.regiao]={l:Math.max(1,Math.min(3,+p.nivel||1)),note:p.nota||''}});
+  d.ci={fadiga:+a.fadiga||3,sono:+a.sono||3,dor:+a.dor||3,estresse:+a.estresse||3,humor:+a.humor||3,pain,obs:a.obs||'',t:x.t||Date.now(),src:'wa'};d.ai=null}
+ touch('days/'+k)});if(typeof toast==='function')toast('Registros do WhatsApp recebidos')}
 async function sbSync(){if(!SB.on||sbBusy||!navigator.onLine)return;sbBusy=true;DB.status='wait';setSync();
  try{const paths=Object.keys(PENDING);if(paths.length){const rows=paths.map(p=>{const del=PENDING[p]==='del';const d=del?null:docAt(p);return{path:p,data:d?JSON.parse(JSON.stringify(d)):null,deleted:del||!d}});const snap={...PENDING};await SB.push(rows);paths.forEach(p=>{if(PENDING[p]===snap[p])delete PENDING[p]})}
   const since=lget('hardfit_pull');const rows=await SB.pull(since);let ch=0;
+  let newLogs=false;
   rows.forEach(r=>{if(PENDING[r.path])return;const[c,id]=r.path.split('/');ch++;
+   if(c==='inbox'){if(!r.deleted&&r.data){applyInbox(r.data);PENDING[r.path]='del'}return}
+   if(c==='logs'&&!r.deleted)newLogs=true;
    if(r.deleted||!r.data){if(S[c]&&id&&S[c][id])delete S[c][id];return}
    if(c==='cfg')S.cfg=Object.assign(baseState().cfg,r.data);else if(c==='chat')S.chat=r.data;else if(S[c])S[c][id]=r.data});
   if(rows.length)lset('hardfit_pull',rows[rows.length-1].updated_at);
+  if(newLogs&&typeof rebuildLoads==='function')rebuildLoads();
+  if(Object.keys(PENDING).length&&!sbAgain){sbAgain=true;setTimeout(()=>{sbAgain=false;sbSync()},300)}
   saveLocal();DB.status=Object.keys(PENDING).length?'wait':'ok';DB.lastSync=Date.now();if(ch&&typeof render==='function'&&!$('#sheet.show')&&!$('#flow.show'))render()}
  catch(e){DB.status='err';DB.err=e.message;if(e.code==='no_session'||e.status===401)DB.status='local'}
  finally{sbBusy=false;setSync()}}
