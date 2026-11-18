@@ -74,7 +74,7 @@ function go(t){TAB=t;STACK=[];render();scrollTo(0,0)}
 function push(v,...a){STACK.push([v,a]);render();scrollTo(0,0)}
 function pop(){STACK.pop();render()}
 let after=[];
-function render(){renderTabs();const[v,a]=STACK.length?STACK[STACK.length-1]:[TAB,[]];$('#view').innerHTML=V[v](...a);const h=after;after=[];h.forEach(f=>f());if(typeof hydrateAssets==='function')hydrateAssets()}
+function render(){renderTabs();const[v,a]=STACK.length?STACK[STACK.length-1]:[TAB,[]];$('#view').innerHTML=V[v](...a);const h=after;after=[];h.forEach(f=>f());if(typeof hydrateAssets==='function')hydrateAssets();if(typeof animateMoves==='function')animateMoves()}
 const hdr=(t,right='')=>`<div class="top"><button class="ib" onclick="pop()" aria-label="Voltar">${I.back}</button><h2>${t}</h2>${right}</div>`;
 function openSheet(h){$('#sheetc').innerHTML=h;$('#ov').classList.add('show');$('#sheet').classList.add('show')}
 function closeSheet(){$('#ov').classList.remove('show');$('#sheet').classList.remove('show')}
@@ -217,7 +217,7 @@ function stdCard(e,tot){
  const A=ACTIVE;const done=A.done[e.id]||[];const cur=done.length;const fin=cur>=5;const set=SETS_STD[Math.min(cur,4)];
  const prev=lastFor(e.id,Math.min(cur,4));const sug=suggestion(e.id);
  let kg=prev.kg,reps=prev.reps;if(set.work){if(cur>2&&done[cur-1])kg=done[cur-1].kg;else if(sug)kg=sug.kg}
- return`<div class="exhero"><div><div class="small mut">Exercício ${A.cur+1} de ${tot}</div><h2 style="margin-top:4px">${e.name}</h2></div>${muscleMini(e.id)}</div>
+ return`${moveSVG(e.id,'hero')}<div class="exhero" style="margin-top:12px"><div><div class="small mut">Exercício ${A.cur+1} de ${tot}</div><h2 style="margin-top:4px">${e.name}</h2></div>${muscleMini(e.id)}</div>
  ${vidLinks(e.id,e.name)}
  ${sug?`<div class="hint"><span class="sw" style="background:${sug.c}"></span><div><b>${sug.t}</b><div class="mut small">${sug.why}</div></div></div>`:''}
  <table class="settbl">${SETS_STD.map((s,j)=>{const d=done[j];return`<tr class="${j===cur?'cur':''} ${d?'done':''}"><td><span class="pl" style="background:${s.c}"></span>${s.t}</td><td>${d?`<b style="color:var(--chalk)">${fmtKg(d.kg)} × ${d.reps}</b>`:s.reps+' reps'}</td><td>${s.rest}s</td><td>${d?(d.pse?'PSE '+d.pse:'✓'):''}</td></tr>`}).join('')}</table>
@@ -230,7 +230,7 @@ function stdCard(e,tot){
  <input style="margin-top:14px;font-size:14px" placeholder="Nota do exercício (banco, pegada, ajuste)" value="${esc(S.cfg.notes[e.id]||'')}" onchange="S.cfg.notes['${e.id}']=this.value;touch('cfg/main')">`}
 function bisetCard(e){
  const A=ACTIVE;const done=A.done[e.id]||[];const cur=done.length;const tot=e.sets*2;const fin=cur>=tot;const it=e.items[cur%2];const rnd=Math.floor(cur/2);const prev=lastFor(it.id,0);
- return`<div class="exhero"><div><div class="small mut">Bi-set: emende A e B, descanse ${e.rest}s</div><h2 style="margin-top:4px">${e.name}</h2></div>${muscleMini('abd_infra','abd_supra')}</div>
+ return`<div class="g2">${e.items.map(x=>`<div>${moveSVG(x.id,'hero')}<div class="tiny mut" style="margin-top:4px;text-align:center">${'AB'[e.items.indexOf(x)]}. ${EX[x.id].n}</div></div>`).join('')}</div><div class="exhero" style="margin-top:12px"><div><div class="small mut">Bi-set: emende A e B, descanse ${e.rest}s</div><h2 style="margin-top:4px">${e.name}</h2></div>${muscleMini('abd_infra','abd_supra')}</div>
  ${e.items.map((x,j)=>{const mine=done.filter((_,q)=>q%2===j);return`<div style="margin-top:14px"><div class="between"><h3>${'AB'[j]}. ${EX[x.id].n}</h3><a class="tag" style="text-decoration:none" href="https://www.youtube.com/results?search_query=${encodeURIComponent(EX[x.id].n+' execução')}" target="_blank" rel="noopener">${I.play} Ver</a></div><table class="settbl">${[...Array(e.sets)].map((_,r)=>{const d=mine[r];const isC=!fin&&cur%2===j&&rnd===r;return`<tr class="${isC?'cur':''} ${d?'done':''}"><td><span class="pl" style="background:var(--red)"></span>Rodada ${r+1}</td><td>${d?`<b style="color:var(--chalk)">${d.kg?fmtKg(d.kg)+' kg × ':''}${d.reps}</b>`:e.reps+' reps'}</td><td>${j?e.rest+'s':'emende'}</td></tr>`}).join('')}</table></div>`}).join('')}
  ${fin?`<div class="hint"><span class="sw" style="background:var(--grn)"></span><b>Bi-set concluído</b></div>`:`<div class="between" style="margin-top:16px"><h3>${'AB'[cur%2]}. ${EX[it.id].n}</h3><span class="small mut">Rodada ${rnd+1} de ${e.sets}</span></div>${numEntry(it.id,prev.kg,prev.reps||e.reps)}${pseRow(it.id)}<button class="btn ${ACTIVE.start?'':'ghost'}" style="margin-top:14px" onclick="confirmSet('${e.id}',${cur%2?e.rest:0},'${it.id}')">Confirmar</button>`}
  ${cur?`<button class="txtbtn" style="margin-top:6px" onclick="undoSet('${e.id}')">Desfazer última série</button>`:''}`}
@@ -269,7 +269,7 @@ V.hist=()=>{const L=Object.values(S.logs).sort(by('start')).reverse();return`${h
 let EVO='agach';
 V.evo=()=>{const pts=Object.values(S.logs).sort(by('start')).map(l=>{const w=l.sets.filter(s=>s.id===EVO&&s.set>=2);return w.length?{x:l.date,y:Math.max(...w.map(s=>s.kg)),r:w.map(s=>s.reps).join('/')}:null}).filter(Boolean);
  return`${hdr('Evolução de carga')}<select onchange="EVO=this.value;render()">${Object.entries(EX).map(([k,e])=>`<option value="${k}" ${k===EVO?'selected':''}>${e.n}</option>`).join('')}</select>
- <div class="panel" style="margin-top:12px"><div class="exhero"><div><h3>${EX[EVO].n}</h3><p class="small mut" style="margin:4px 0 0">${(suggestion(EVO)||{}).t||''}</p></div>${muscleMini(EVO)}</div>${pts.length?lineChart(pts):`<p class="small mut">Sem work sets registrados ainda. Referência do coach: ${fmtKg((SEED[EVO]||[0])[0])} kg.</p>`}</div>
+ <div class="panel" style="margin-top:12px">${moveSVG(EVO,'hero')}<div class="exhero" style="margin-top:12px"><div><h3>${EX[EVO].n}</h3><p class="small mut" style="margin:4px 0 0">${(suggestion(EVO)||{}).t||''}</p></div>${muscleMini(EVO)}</div>${pts.length?lineChart(pts):`<p class="small mut">Sem work sets registrados ainda. Referência do coach: ${fmtKg((SEED[EVO]||[0])[0])} kg.</p>`}</div>
  ${pts.length?`<div class="rows">${pts.slice().reverse().map(p=>`<div class="row"><div class="grow">${fmtD(p.x)}</div><b class="n">${fmtKg(p.y)} kg</b><span class="small mut">${p.r}</span></div>`).join('')}</div>`:''}`};
 function lineChart(p,unit=''){if(!p.length)return'';const W=320,H=150,pd=24;const ys=p.map(a=>a.y);let mn=Math.min(...ys),mx=Math.max(...ys);if(mn===mx){mn-=1;mx+=1}
  const X=i=>p.length===1?W/2:pd+i*(W-pd*2)/(p.length-1),Y=v=>H-pd-(v-mn)/(mx-mn)*(H-pd*2-10);
