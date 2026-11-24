@@ -96,6 +96,7 @@ V.hoje=()=>{
  const aiTxt=D.ai;
  return`<div class="between" style="margin:8px 0 18px"><div class="brand">${plateMark()} HardFit</div><span id="syncdot" class="sync ${DB.status}"><i></i>${syncLabel()}</span></div>
  <h1>${greet}, ${esc(S.cfg.name)}</h1><div class="lead">${DOW[d.getDay()]}, ${d.getDate()} de ${MON[d.getMonth()]}</div>
+ ${dashCard()}
  ${!IS_CLAUDE()&&!SB.on?`<button class="panel" style="margin:16px 0 0;width:100%;text-align:left;border-color:var(--blue)" onclick="push('conta')"><div class="between"><h3>Ative a sincronização</h3><span class="chev"></span></div><p class="small mut" style="margin:6px 0 0">Crie seu acesso uma vez para salvar na nuvem e liberar a IA.</p></button>`:''}
  <div class="panel" style="margin-top:18px;padding:18px">
   <div class="flex" style="gap:16px;align-items:center">
