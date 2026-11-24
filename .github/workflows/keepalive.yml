@@ -1,0 +1,15 @@
+name: Manter banco do HardFit ativo
+# O Supabase grátis pausa projetos sem uso. Esta tarefa faz uma consulta leve todo dia.
+on:
+  schedule:
+    - cron: "17 11 * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consulta leve no banco
+        run: |
+          curl -fsS -o /dev/null -w "%{http_code}\n" \
+            "https://vynwypbrtrktnofwdlkc.supabase.co/rest/v1/docs?select=path&limit=1" \
+            -H "apikey: sb_publishable_5Eal8371fOoSIgnOEB7Fhg_w4dMRV7_"
