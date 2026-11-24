@@ -44,6 +44,8 @@ const MOVES={
  elev_uni:{v:'f',p0:{ab:6,eb:4,abL:6,ebL:0},p1:{ab:86,eb:4,abL:6,ebL:0},eq:p=>LN(p.R.w,P(20,136),1.5,'#8a9099')+handle(p.R.w),st:()=>CIR(P(20,136),4,EQ)},
  scott:{v:'s',p0:{hx:92,hy:108,tha:85,sa:5,t:14,ua:48,fa:62},p1:{hx:92,hy:108,tha:85,sa:5,t:14,ua:48,fa:172},eq:p=>LN(P(p.wr.x-2,p.wr.y-12),P(p.wr.x+2,p.wr.y+12),3,EQ),st:()=>LN(P(110,72),P(136,96),8,'#2f343a')+Lst(126,98,126,140)+R(72,112,40,6)+Lst(92,118,92,140)},
  triceps_testa:{v:'s',p0:{hx:120,hy:95,tha:68,sa:2,t:-90,hd:0,ua:196,fa:262},p1:{hx:120,hy:95,tha:68,sa:2,t:-90,hd:0,ua:196,fa:188},eq:p=>LN(p.wr,P(28,132),1.5,'#8a9099')+handle(p.wr),st:()=>bench(64,134,100)+CIR(P(28,132),4,EQ)},
+ hip_thrust:{v:'s',p0:{ax:142,ay:138,s:-9,th:110,t:-61,ua:62,fa:88},p1:{ax:142,ay:138,s:-9,th:76,t:-93,ua:84,fa:92},eq:p=>plate(P(p.hip.x,p.hip.y-9)),st:()=>R(36,98,36,6)+Lst(54,104,54,140)},
+ bulgaro:{v:'s',p0:{ax:122,ay:138,s:4,th:4,t:6,ua:0,fa:0},p1:{ax:122,ay:138,s:26,th:78,t:22,ua:4,fa:4},eq:p=>{const kr=P((p.hip.x+60)/2-4,Math.max(p.hip.y,104)+20);return LN(p.hip,kr,9,'#bdb9b1')+LN(kr,P(62,100),8,'#bdb9b1')+dumb(p.wr)},st:()=>R(40,104,32,6)+Lst(56,110,56,140)},
  abd_infra:{v:'s',p0:{hx:112,hy:130,tha:96,sa:96,t:-90,hd:0,ua:88,fa:88,fo:-80},p1:{hx:112,hy:130,tha:178,sa:178,t:-90,hd:0,ua:88,fa:88,fo:-100},st:()=>R(40,136,120,4,1)},
  abd_supra:{v:'s',p0:{hx:112,hy:130,tha:140,sa:24,t:-90,hd:0,ua:150,fa:150},p1:{hx:112,hy:130,tha:140,sa:24,t:-58,hd:6,ua:118,fa:108},st:()=>R(40,136,120,4,1)}};
 function moveFrame(id,u){const m=MOVES[id];if(!m)return'';const q=lerp(m.p0,m.p1,u);let s=`<line x1="10" y1="140.5" x2="190" y2="140.5" stroke="#2d3238" stroke-width="1"/>`+(m.st?m.st():'');

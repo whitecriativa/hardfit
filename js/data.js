@@ -29,16 +29,19 @@ const EX={
  elev_uni:{n:'Elevação unilateral no cross',m:['ombro'],s:[],step:1.25},
  scott:{n:'Rosca Scott barra W',m:['biceps'],s:['antebraco'],step:2.5},
  triceps_testa:{n:'Tríceps testa na polia com corda',m:['triceps'],s:[],step:2.5},
+ hip_thrust:{n:'Elevação pélvica com barra',m:['gluteo'],s:['posterior'],step:5},
+ bulgaro:{n:'Agachamento búlgaro com halteres',m:['quad','gluteo'],s:['posterior'],step:1},
  abd_infra:{n:'Abdominal infra deitado',m:['abdomen'],s:['obliquo'],step:0},
  abd_supra:{n:'Abdominal supra no solo',m:['abdomen'],s:[],step:0}};
 const SEED={agach:[40,15],sup_incl_maq:[20,12],remada_tri:[12,18],flexora:[20,12],elev_lat:[16,12],triceps_corda:[10,15],pant_sent:[20,10],stiff:[20,12],puxada:[12,15],sup_reto_h:[28,10],extensora:[12,15],mesa_flex:[20,10],rosca_alt:[24,12],cruc_inv:[0,0],legpress:[50,12],desenv_maq:[12,15],crossover:[10,12],elev_uni:[3.75,10],scott:[15,10],triceps_testa:[5,12],abd_infra:[0,15],abd_supra:[0,15]};
 const SESS={
  A:{name:'Treino A',full:'Full body · Treino A',day:3,ex:['agach','sup_incl_maq','remada_tri','flexora','elev_lat','triceps_corda','pant_sent','BISET']},
  B:{name:'Treino B',full:'Full body · Treino B',day:5,ex:['stiff','puxada','sup_reto_h','extensora','mesa_flex','rosca_alt','cruc_inv','pant_sent']},
- C:{name:'Treino C',full:'Full body · Treino C',day:6,ex:['legpress','desenv_maq','remada_tri','flexora','crossover','elev_uni','scott','triceps_testa','BISET']}};
+ C:{name:'Treino C',full:'Full body · Treino C',day:6,ex:['legpress','desenv_maq','remada_tri','flexora','crossover','elev_uni','scott','triceps_testa','BISET']},
+ D:{name:'Treino D',full:'Foco peito, coxa e glúteo · Treino D',day:2,extra:1,ex:['sup_reto_h','hip_thrust','bulgaro','crossover','extensora','legpress','pant_sent']}};
 const PROGRAM={name:'Full body A/B/C',start:'2026-10-22',end:'2026-11-21'};
 const ACT={
- A:{n:'Treino A',k:'forca'},B:{n:'Treino B',k:'forca'},C:{n:'Treino C',k:'forca'},
+ A:{n:'Treino A',k:'forca'},B:{n:'Treino B',k:'forca'},C:{n:'Treino C',k:'forca'},D:{n:'Treino D',k:'forca'},
  crossfit:{n:'CrossFit',k:'wod',min:60,alvo:'WOD da box',hk:'Treino cruzado'},
  z2:{n:'Cardio Z2',k:'cardio',min:45,alvo:'45 min com FC entre 115 e 130 bpm',hk:'Cardio misto'},
  corrida:{n:'Corrida',k:'cardio',min:35,alvo:'Ritmo de conversa, FC até 135 bpm',hk:'Corrida ao ar livre'},
