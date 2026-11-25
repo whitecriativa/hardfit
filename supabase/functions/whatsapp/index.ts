@@ -51,7 +51,8 @@ async function media(id: string): Promise<{ b64: string; mime: string } | null> 
   return { b64: btoa(s), mime: meta.mime_type || "application/octet-stream" };
 }
 
-async function claude(content: unknown[]) {
+async function claude(content: any[]) {
+  if (!env("ANTHROPIC_API_KEY")) return gemini(content);
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": env("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01", "content-type": "application/json" },
@@ -60,6 +61,20 @@ async function claude(content: unknown[]) {
   const o = await r.json();
   if (!r.ok) throw new Error(o?.error?.message || "Erro na API do Claude");
   return (o.content || []).filter((b: { type: string }) => b.type === "text").map((b: { text: string }) => b.text).join("");
+}
+
+// Gemini gratuito do Google (GEMINI_API_KEY), usado quando não há chave do Claude
+async function gemini(content: any[]) {
+  const parts = content.map((c) => c.type === "text" ? { text: c.text } : { inline_data: { mime_type: c.source.media_type, data: c.source.data } });
+  const model = env("GEMINI_MODEL") || "gemini-3.6-flash";
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "x-goog-api-key": env("GEMINI_API_KEY"), "content-type": "application/json" },
+    body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { maxOutputTokens: 6000 } }),
+  });
+  const o = await r.json();
+  if (!r.ok) throw new Error(o?.error?.message || "Erro na API do Gemini");
+  return (o.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("");
 }
 
 function parseJSON(t: string) {
@@ -88,7 +103,7 @@ Se for só uma pergunta, devolva "acoes":[] e responda como coach na "resposta" 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   if (req.method === "GET") {
-    if (url.searchParams.get("hub.mode") === "subscribe" && url.searchParams.get("hub.verify_token") === env("WA_VERIFY_TOKEN"))
+    if (url.searchParams.get("hub.mode") === "subscribe" && url.searchParams.get("hub.verify_token") === env("WA_VERIFY_TOKEN") && env("WA_VERIFY_TOKEN"))
       return new Response(url.searchParams.get("hub.challenge") || "", { status: 200 });
     return new Response("forbidden", { status: 403 });
   }
@@ -113,7 +128,7 @@ async function handle(m: any) {
   const { data: seen } = await sb.from("wa_log").select("id").eq("id", m.id).maybeSingle();
   if (seen) return; // mensagem repetida pela Meta
   await sb.from("wa_log").insert({ id: m.id, kind: m.type, body: m.text?.body || m.image?.caption || m.document?.caption || "" });
-  if (!env("ANTHROPIC_API_KEY")) return reply(m.from, "A IA do HardFit ainda não foi ativada: falta a chave ANTHROPIC_API_KEY no Supabase.");
+  if (!env("ANTHROPIC_API_KEY") && !env("GEMINI_API_KEY")) return reply(m.from, "A IA do HardFit ainda não foi ativada: falta a chave GEMINI_API_KEY (grátis) no Supabase.");
   if (m.type === "audio") return reply(m.from, "Ainda não entendo áudio. Mande em texto: no teclado do iPhone, toque no microfone e fale que ele digita.");
 
   const { data: users } = await sb.auth.admin.listUsers({ page: 1, perPage: 1 });
