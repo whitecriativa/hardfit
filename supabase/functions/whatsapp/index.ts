@@ -1,8 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// HardFit no WhatsApp: recebe mensagens da API oficial da Meta, entende com o Claude,
-// registra no banco do app e responde confirmando.
+// HardFit no WhatsApp: recebe mensagens da API oficial da Meta, entende com a IA,
+// registra no banco do app e responde como coach. Autenticação própria (token da Meta,
+// assinatura e número do dono), por isso verify_jwt fica desligado.
 const env = (k: string) => Deno.env.get(k) || "";
 const GRAPH = "https://graph.facebook.com/v21.0";
 const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
@@ -16,16 +17,16 @@ const EX: Record<string, string> = {
   abd_infra: "Abdominal infra deitado", abd_supra: "Abdominal supra no solo",
 };
 const REG = "ombro, peito, biceps, antebraco, abdomen, obliquo, quad, joelho, canela, trapezio, ombro_post, dorsal, lombar, triceps, gluteo, posterior, panturrilha (acrescente _d ou _e para lado direito/esquerdo quando houver lado)";
+const PLANO = `Plano alimentar (kcal estimadas): café da manhã ~405 kcal (pão integral, 3 ovos, requeijão light, mamão) ou ~550 (whey, aveia, banana, iogurte zero); almoço ~540 (150 g frango ou equivalente, 180 g arroz, feijão, vegetais, salada sem azeite); lanche ~490 (whey, aveia, banana, iogurte) ou ~395 (pão, frango ou atum, requeijão); jantar ~420 (tilápia ou frango, 150 g arroz ou batata, vegetais); ceia opcional ~105 (melancia ou melão). Total do dia ~1.850 a 2.000 kcal. Água: 5 L.`;
 
 function today() {
-  const p = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  return p; // AAAA-MM-DD
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 const uid = (p: string) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
 async function hmacOk(raw: string, sig: string | null) {
   const secret = env("WA_APP_SECRET");
-  if (!secret) return true; // assinatura opcional
+  if (!secret) return true;
   if (!sig) return false;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw)));
@@ -84,21 +85,38 @@ function parseJSON(t: string) {
   return null;
 }
 
-const PROMPT = (hoje: string, texto: string, temArquivo: string) => `Você é o assistente do app de treino HardFit do Luiz (CrossFit, força A/B/C, corrida, bike, natação, dieta). Ele mandou uma mensagem no WhatsApp para registrar algo. Hoje é ${hoje} (America/Sao_Paulo).
+// contexto curto do banco: o que ele escreveu sobre si, o dia de hoje e evento próximo
+async function context(userId: string, hoje: string) {
+  const { data } = await sb.from("docs").select("path,data").eq("user_id", userId).in("path", ["cfg/main", "days/" + hoje]);
+  const cfg = data?.find((r: any) => r.path === "cfg/main")?.data || {};
+  const d = data?.find((r: any) => r.path === "days/" + hoje)?.data || {};
+  const { data: evs } = await sb.from("docs").select("data").eq("user_id", userId).like("path", "events/%").eq("deleted", false);
+  const ev = (evs || []).map((r: any) => r.data).filter((e: any) => e && (e.end || e.date) >= hoje).map((e: any) => `${e.name} em ${e.date}`);
+  const { data: fs } = await sb.from("docs").select("data").eq("user_id", userId).like("path", "foods/%").eq("deleted", false);
+  const kcal = (fs || []).map((r: any) => r.data).filter((f: any) => f && f.date === hoje).reduce((a: number, f: any) => a + (+f.r?.kcal || 0), 0);
+  return `Contexto pessoal que ele escreveu: ${cfg.contexto || "(nada)"}
+Hoje até agora: ${Object.values(d.meals || {}).filter((v) => v === true).length} refeições do plano marcadas, ${((d.water || 0) / 1000).toFixed(1)} L de água, ${kcal} kcal em pratos fora do plano${d.ci ? `, check-in sono ${d.ci.sono}/5, humor ${d.ci.humor}/5, estresse ${d.ci.estresse}/5` : ""}.
+${ev.length ? "Evento chegando: " + ev.join("; ") : ""}`;
+}
+
+const PROMPT = (hoje: string, texto: string, temArquivo: string, ctx: string) => `Você é o coach e nutricionista do app HardFit do Luiz (CrossFit, força A/B/C, corrida, bike, natação, dieta). Ele usa o WhatsApp para anotar TUDO o que faz, come, bebe e sente. Hoje é ${hoje} (America/Sao_Paulo).
+${ctx}
+${PLANO}
 Mensagem: """${texto || "(sem texto)"}"""${temArquivo}
 
 Transforme em ações. Responda SOMENTE com JSON:
-{"acoes":[...],"resposta":"confirmação curta em português, como um coach, até 3 linhas, sem emojis"}
+{"acoes":[...],"resposta":"resposta de coach em português, até 4 linhas, sem emojis"}
 Tipos de ação (use só o que a mensagem disser; datas em AAAA-MM-DD, padrão hoje; "ontem" = dia anterior):
 - {"tipo":"agua","ml":500,"data":"..."}
-- {"tipo":"refeicao","n":0,"feita":true,"opcao":0,"data":"..."}  n: 0 café da manhã, 1 almoço, 2 lanche da tarde, 3 jantar, 4 ceia. opcao: 0 principal, 1 alternativa (só se ele disser)
+- {"tipo":"refeicao","n":0,"feita":true,"opcao":0,"data":"..."}  quando ele seguiu o plano. n: 0 café da manhã, 1 almoço, 2 lanche da tarde, 3 jantar, 4 ceia. opcao: 0 principal, 1 alternativa (só se ele disser)
+- {"tipo":"alimento","n":5,"titulo":"","descricao":"","itens":[{"nome":"","porcao":"","kcal":0}],"kcal":0,"p":0,"c":0,"g":0,"fora_do_plano":true,"nivel":"dentro|leve|moderado|alto","vs_plano":"diferença em kcal para a refeição do plano","impacto":"1 frase honesta, sem drama","proximo_passo":"1 frase, sem jejum compensatório","data":"..."}  qualquer comida ou bebida fora do plano (lanche, doce, refrigerante, álcool) ou foto de prato. Estime porções e calorias pela tabela TACO e rótulos brasileiros. n 0-4 se substituiu uma refeição, 5 se foi extra
 - {"tipo":"cardio","mod":"z2|corrida|bike|natacao|crossfit","min":40,"km":0,"fc":0,"kcal":0,"pse":0,"notas":"","data":"..."}  natação em km (1500 m = 1.5)
 - {"tipo":"forca","sessao":"A|B|C","min":60,"series":[{"ex":"agach","kg":40,"reps":10,"set":2}],"data":"..."}  set: 0 aquecimento, 1 feeder, 2/3/4 work sets; se ele não disser o tipo, use 2,3,4 em sequência. ex válidos: ${Object.entries(EX).map(([k, v]) => k + "=" + v).join("; ")}
-- {"tipo":"checkin","fadiga":1-5,"sono":1-5,"dor":1-5,"estresse":1-5,"humor":1-5,"obs":"","dores":[{"regiao":"joelho_d","nivel":1-3,"nota":""}],"data":"..."}  5 = melhor estado; preencha o que der para inferir e use 3 no que ele não falou; regiões: ${REG}
+- {"tipo":"checkin","fadiga":1-5,"sono":1-5,"dor":1-5,"estresse":1-5,"humor":1-5,"obs":"","dores":[{"regiao":"joelho_d","nivel":1-3,"nota":""}],"data":"..."}  quando ele falar de como dormiu ou como está; 5 = melhor estado; use 3 no que ele não falou; regiões: ${REG}
+- {"tipo":"nota","texto":"","data":"..."}  qualquer coisa do dia que não cabe nos outros tipos (rotina, remédio que tomou, como se sentiu, evento do dia). Guarde com as palavras dele
 - {"tipo":"peso","kg":82.4,"data":"..."}
 - {"tipo":"exame","r":{"tipo":"","data_coleta":"","laboratorio":"","legivel":true,"itens":[{"nome":"","valor":"","unidade":"","referencia":"","status":"normal|baixo|alto|limítrofe|sem referência","explicacao":""}],"resumo":"","atencao":[],"treino_e_dieta":"","perguntar_ao_medico":[]}}  só quando o arquivo for um exame/laudo
-- {"tipo":"foto_refeicao","n":2,"descricao":"","data":"..."}  foto de comida: compare com a dieta e marque a refeição se fizer sentido
-Se for só uma pergunta, devolva "acoes":[] e responda como coach na "resposta" (não faça diagnóstico médico). Se não der para entender, peça para ele reformular.`;
+Resposta: confirme o que registrou com os números (kcal do prato e total do dia quando for comida). Se ele estiver cansado, ansioso, dormiu mal ou furou a dieta, acolha em uma frase, sem culpa, e dê o próximo passo possível hoje. Se ele mencionar remédio, respeite a prescrição e não sugira mudar. Se for só uma pergunta, devolva "acoes":[] e responda como coach (sem diagnóstico médico). Se não der para entender, peça para ele reformular.`;
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
@@ -124,9 +142,9 @@ Deno.serve(async (req) => {
 
 async function handle(m: any) {
   const owner = env("WA_OWNER").replace(/\D/g, "");
-  if (!owner || m.from.replace(/\D/g, "") !== owner) return; // só o dono
+  if (!owner || m.from.replace(/\D/g, "") !== owner) return;
   const { data: seen } = await sb.from("wa_log").select("id").eq("id", m.id).maybeSingle();
-  if (seen) return; // mensagem repetida pela Meta
+  if (seen) return;
   await sb.from("wa_log").insert({ id: m.id, kind: m.type, body: m.text?.body || m.image?.caption || m.document?.caption || "" });
   if (!env("ANTHROPIC_API_KEY") && !env("GEMINI_API_KEY")) return reply(m.from, "A IA do HardFit ainda não foi ativada: falta a chave GEMINI_API_KEY (grátis) no Supabase.");
   if (m.type === "audio") return reply(m.from, "Ainda não entendo áudio. Mande em texto: no teclado do iPhone, toque no microfone e fale que ele digita.");
@@ -137,7 +155,7 @@ async function handle(m: any) {
 
   const hoje = today();
   const texto = m.text?.body || m.image?.caption || m.document?.caption || "";
-  const content: unknown[] = [];
+  const content: any[] = [];
   let fileNote = "", stored: string | null = null;
   const mid = m.image?.id || m.document?.id;
   if (mid) {
@@ -146,17 +164,18 @@ async function handle(m: any) {
       const isPdf = /pdf/.test(f.mime), isImg = /^image\//.test(f.mime);
       if (isPdf) content.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: f.b64 } });
       else if (isImg) content.push({ type: "image", source: { type: "base64", media_type: f.mime.replace("image/jpg", "image/jpeg"), data: f.b64 } });
-      fileNote = `\nEle também mandou um arquivo (${isPdf ? "PDF" : "imagem"}). Veja se é exame, foto de refeição ou outra coisa.`;
-      const ext = isPdf ? "pdf" : "jpg";
-      const path = `${userId}/wa_${m.id.replace(/[^\w]/g, "").slice(-20)}.${ext}`;
+      fileNote = `\nEle também mandou um arquivo (${isPdf ? "PDF" : "imagem"}). Veja se é exame, foto de prato/bebida (calcule as calorias) ou outra coisa.`;
+      const path = `${userId}/wa_${m.id.replace(/[^\w]/g, "").slice(-20)}.${isPdf ? "pdf" : "jpg"}`;
       const bin = Uint8Array.from(atob(f.b64), (c) => c.charCodeAt(0));
       const up = await sb.storage.from("hardfit").upload(path, bin, { contentType: f.mime, upsert: true });
       if (!up.error) stored = "sb:" + path;
     }
   }
-  content.push({ type: "text", text: PROMPT(hoje, texto, fileNote) });
+  let ctx = "";
+  try { ctx = await context(userId, hoje); } catch { /* segue sem contexto */ }
+  content.push({ type: "text", text: PROMPT(hoje, texto, fileNote, ctx) });
   const out = parseJSON(await claude(content));
-  if (!out) return reply(m.from, "Não entendi. Pode mandar de outro jeito? Ex.: \"tomei 500 ml\" ou \"bike 40 min FC 125\".");
+  if (!out) return reply(m.from, "Não entendi. Pode mandar de outro jeito? Ex.: \"tomei 500 ml\", \"comi 2 pastéis\" ou \"bike 40 min FC 125\".");
 
   const rows: { user_id: string; path: string; data: unknown; deleted: boolean }[] = [];
   const dayActs: unknown[] = [];
@@ -176,7 +195,7 @@ async function handle(m: any) {
       const id = uid("X");
       const dc = a.r.data_coleta && /^\d{4}-\d{2}-\d{2}$/.test(a.r.data_coleta) ? a.r.data_coleta : hoje;
       rows.push({ user_id: userId, path: "exams/" + id, deleted: false, data: { id, t: Date.now(), date: dc, r: a.r, pages: stored ? [stored] : [], src: "whatsapp" } });
-    } else if (["agua", "refeicao", "checkin", "foto_refeicao"].includes(a.tipo)) {
+    } else if (["agua", "refeicao", "checkin", "foto_refeicao", "alimento", "nota"].includes(a.tipo)) {
       dayActs.push({ ...a, data: d });
     }
   }

@@ -1,7 +1,7 @@
 /* ===== Armazenamento: local (offline) + banco do Claude (sincroniza entre aparelhos) ===== */
 const LKEY='anilha_v2',PKEY='anilha_pending',AKEY='anilha_active';
-const COLLS=['days','logs','cardio','body','exams','photos','reports','tech'];
-function baseState(){return{cfg:{name:'Luiz',flex:true,week:JSON.parse(JSON.stringify(DEFAULT_WEEK)),loads:{},notes:{},shop:{},videos:{}},days:{},logs:{},cardio:{},body:{},exams:{},photos:{},reports:{},tech:{},chat:{msgs:[]}}}
+const COLLS=['days','logs','cardio','body','exams','photos','reports','tech','foods','events'];
+function baseState(){return{cfg:{name:'Luiz',flex:true,week:JSON.parse(JSON.stringify(DEFAULT_WEEK)),loads:{},notes:{},shop:{},videos:{}},days:{},logs:{},cardio:{},body:{},exams:{},photos:{},reports:{},tech:{},foods:{},events:{},chat:{msgs:[]}}}
 let S=baseState(),ACTIVE=null,PENDING={};
 const DB={db:null,assets:null,sample:null,downloads:null,status:'local',ready:false};
 function lget(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}

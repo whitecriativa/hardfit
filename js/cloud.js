@@ -30,9 +30,10 @@ let sbBusy=false,sbAgain=false;
 function applyInbox(x){(x.acoes||[]).forEach(a=>{const k=/^\d{4}-\d{2}-\d{2}$/.test(a.data||'')?a.data:dk();const d=day(k);d.wt=Date.now();
  if(a.tipo==='agua'&&+a.ml){d.water=Math.max(0,(d.water||0)+ +a.ml);d.wlog=d.wlog||[];d.wlog.push({t:x.t||Date.now(),ml:+a.ml,src:'wa'})}
  else if((a.tipo==='refeicao'||a.tipo==='foto_refeicao')&&a.n!=null){d.meals=d.meals||{};d.meals[a.n]=a.feita!==false;if(a.opcao!=null)d.meals['o'+a.n]=+a.opcao}
+ else if(['alimento','nota','cardio','peso'].includes(a.tipo)||(a.tipo==='foto_refeicao'&&a.kcal)){if(typeof applyActions==='function')applyActions(k,[{...a,foto:a.foto||x.foto}],'wa');return}
  else if(a.tipo==='checkin'){const pain={};(a.dores||[]).forEach(p=>{if(p.regiao&&REG_N[baseOf(p.regiao)])pain[p.regiao]={l:Math.max(1,Math.min(3,+p.nivel||1)),note:p.nota||''}});
   d.ci={fadiga:+a.fadiga||3,sono:+a.sono||3,dor:+a.dor||3,estresse:+a.estresse||3,humor:+a.humor||3,pain,obs:a.obs||'',t:x.t||Date.now(),src:'wa'};d.ai=null}
- touch('days/'+k)});if(typeof toast==='function')toast('Registros do WhatsApp recebidos')}
+ touch('days/'+k)});if(!x.silent&&typeof toast==='function')toast('Registros do WhatsApp recebidos')}
 async function sbSync(){if(!SB.on||sbBusy||!navigator.onLine)return;sbBusy=true;DB.status='wait';setSync();
  try{const paths=Object.keys(PENDING);if(paths.length){const rows=paths.map(p=>{const del=PENDING[p]==='del';const d=del?null:docAt(p);return{path:p,data:d?JSON.parse(JSON.stringify(d)):null,deleted:del||!d}});const snap={...PENDING};await SB.push(rows);paths.forEach(p=>{if(PENDING[p]===snap[p])delete PENDING[p]})}
   const since=lget('hardfit_pull');const rows=await SB.pull(since);let ch=0;
