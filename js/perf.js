@@ -163,10 +163,17 @@ function dashCard(){const g=goals(),b=bodyTrend(),E=evals(),ev=E[E.length-1],pv=
    :`<div class="small mut">${ev?'':'Sem avaliação por foto ainda. '}Séries efetivas nos últimos 7 dias</div><div class="small" style="margin-top:8px">${g.prioridades.map(k=>`<div class="between"><span>${GROUPS[k]}</span><b class="n">${fmtKg(ws[k]||0)} / 12</b></div>`).join('')}</div>`}
    ${!ev||(Date.now()-ev.t)/864e5>14?`<button class="btn sm blue" style="margin-top:10px" onclick="push('avaliacao')">${ev?'Hora de nova avaliação':'Fazer avaliação por foto'}</button>`:`<button class="txtbtn" onclick="push('avaliacaoVer','${ev.id}')">Ver avaliação</button>`}</div></div>
  </div>
- <div class="strip" style="margin-top:14px;grid-template-columns:repeat(3,1fr)">
-  <div><b>${forca}/${g.forca_sem}</b><span>academia</span></div><div><b style="color:${cf>g.crossfit_sem?'var(--yel)':'var(--chalk)'}">${cf}/${g.crossfit_sem}</b><span>CrossFit</span></div><div><b>${Math.round(card)}</b><span>min cardio</span></div>
- </div>
- <div class="strip" style="margin-top:8px;grid-template-columns:repeat(3,1fr)">
-  <div><b>${diet!=null?Math.round(diet/4*100)+'%':'–'}</b><span>dieta</span></div><div><b>${agua!=null?fmtKg(Math.round(agua/100)/10)+' L':'–'}</b><span>água/dia</span></div><div><b style="color:${pr==null?'var(--chalk)':pr>=70?'var(--grn)':pr>=50?'var(--yel)':'var(--red)'}">${pr!=null?Math.round(pr):'–'}</b><span>prontidão</span></div>
+ ${(()=>{const k=dk(),D=S.days[k]||{},wt=D.water||0,dd=dietDone(k),r=readiness(k);
+  const tl=Object.values(S.logs).filter(l=>l.date===k),tc=Object.values(S.cardio).filter(c=>c.date===k);
+  const tr=tl.length?tl.map(l=>l.sess).join('+'):tc.some(c=>c.mod==='crossfit')?'CF':'–';const cmin=tc.filter(c=>c.mod!=='crossfit').reduce((a,c)=>a+num(c.min),0);
+  const ok=v=>v?'var(--grn)':'var(--chalk)';
+  return`<div class="small mut" style="margin:16px 0 6px">Hoje</div><div class="strip" style="grid-template-columns:repeat(4,1fr)">
+  <div><b style="color:${ok(wt>=5000)}">${fmtKg(Math.round(wt/100)/10)}<span class="tiny mut"> L</span></b><span>água de 5</span></div>
+  <div><b style="color:${ok(dd>=3)}">${dd}/4</b><span>refeições</span></div>
+  <div><b style="color:${ok(tl.length||tc.length)}">${tr}</b><span>treino${cmin?' · '+Math.round(cmin)+'′':''}</span></div>
+  <div><b style="color:${!r?'var(--chalk)':r.score>=70?'var(--grn)':r.score>=50?'var(--yel)':'var(--red)'}">${r?r.score:'–'}</b><span>prontidão</span></div></div>`})()}
+ <div class="small mut" style="margin:12px 0 6px">Semana</div>
+ <div class="strip" style="grid-template-columns:repeat(4,1fr)">
+  <div><b>${forca}/${g.forca_sem}</b><span>academia</span></div><div><b style="color:${cf>g.crossfit_sem?'var(--yel)':'var(--chalk)'}">${cf}/${g.crossfit_sem}</b><span>CrossFit</span></div><div><b>${Math.round(card)}</b><span>min cardio</span></div><div><b>${diet!=null?Math.round(diet/4*100)+'%':'–'}</b><span>dieta 7 dias</span></div>
  </div>
  <button class="txtbtn" style="margin-top:8px" onclick="push('perf')">Ver performance completa</button></div>`}

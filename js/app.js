@@ -596,5 +596,6 @@ async function acGo(m){const e=$('#ac_e').value.trim(),p=$('#ac_p').value;if(!e|
 /* ===== Início ===== */
 window.addEventListener('DOMContentLoaded',()=>{loadLocal();render();{const c=lget('hardfit_cr');if(c&&c.start)startCardio(c.mod)}
 connectCloud().then(initDict)});
-window.addEventListener('online',()=>{sbSync();render()});window.addEventListener('offline',()=>render());
+window.addEventListener('online',()=>{sbSync();render()});
+let LASTDAY=dk();const dayCheck=()=>{if(dk()!==LASTDAY){LASTDAY=dk();DK=null;if(!$('#flow.show')&&!$('#sheet.show'))render()}};setInterval(dayCheck,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)dayCheck()});window.addEventListener('offline',()=>render());
 if(!window.claude&&'serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
